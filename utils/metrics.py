@@ -281,7 +281,7 @@
 import pandas as pd
 
 # def calculate_kpis(df_main, df_delays, df_targets):
-def calculate_kpis(df_production, df_delays, monthly_target_mt=0):
+def calculate_kpis(df_main, df_delays, monthly_target_mt=0):
     if df_main.empty:
         return {
             "total_prod": 0, "avg_prod": 0, "avg_speed": 0, "max_speed": 0, "min_speed": 0,
