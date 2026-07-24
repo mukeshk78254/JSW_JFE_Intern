@@ -960,7 +960,12 @@ def load_all_data():
         if get_col('SPEED'): rename_map[get_col('SPEED')] = 'Casting Speed'
         if get_col('DISCHARGE'): rename_map[get_col('DISCHARGE')] = 'Production'
         if get_col('LIFTING TEMP'): rename_map[get_col('LIFTING TEMP')] = 'Lifting Temp'
-        if get_col('AVG. TEMP'): rename_map[get_col('AVG. TEMP')] = 'Tundish Temp'
+        # if get_col('AVG. TEMP'): rename_map[get_col('AVG. TEMP')] = 'Tundish Temp'
+        target_cols = [
+    # ... other columns ...
+    ('LIFTINGTEMP', 'Lifting Temp'),
+    ('AVGTEMP', 'Tundish Temp')
+]
         if get_col('CASTING TIME'): rename_map[get_col('CASTING TIME')] = 'Casting Time'
 
         df_bops = df_bops.rename(columns=rename_map)
