@@ -649,7 +649,8 @@ def load_all_data():
     csp_delay = find_file("*CSP DELAY*.xlsx", possible_dirs)
     elec_delay = find_file("*Electrical Delay*.xlsx", possible_dirs)
     chem_file = find_file("*Chemistry*.xlsx", possible_dirs)
-    pm_file = find_file("*PM*.xlsx", possible_dirs)
+    # pm_file = find_file("*PM*.xlsx", possible_dirs)
+    pm_file = find_file("*PM*.xlsx", possible_dirs) or find_file("*PM*.XLSX", possible_dirs)
     target_file = find_file("*MBP*.xlsx", possible_dirs) or find_file("*target*.xlsx", possible_dirs)
     rca_file = find_file("*RCA*.xlsx", possible_dirs)
     # Added search for Grid Gap file
