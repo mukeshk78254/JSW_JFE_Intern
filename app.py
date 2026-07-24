@@ -799,7 +799,7 @@ if 'Shift' in df_filtered.columns:
         df_filtered = df_filtered[df_filtered["Shift"] == shift_sel]
 
 # 3. Calculate KPIs
-kpis = calculate_kpis(df_filtered, delay_filtered, monthly_target_mt=target_mt)
+kpis = calculate_kpis(df_filtered, delay_filtered)
 
 # 4. Top WinCC Status Header
 col1, col2, col3, col4, col5 = st.columns(5)
