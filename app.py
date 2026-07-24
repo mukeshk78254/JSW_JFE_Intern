@@ -31,7 +31,7 @@ if df_main.empty:
 st.sidebar.markdown("### SCADA Control Panel")
 date_min, date_max = df_main["Timestamp"].min().date(), df_main["Timestamp"].max().date()
 date_range = st.sidebar.date_input("Operating Period", (date_min, date_max), min_value=date_min, max_value=date_max)
-target_mt = st.sidebar.number_input("Monthly Target (MT)", value=50000)
+
 
 df_filtered = df_main.copy()
 delay_filtered = df_delays.copy()
