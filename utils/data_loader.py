@@ -507,6 +507,125 @@
 #         "chem": df_chem,
 #         "rca": df_rca
 #     }
+# import pandas as pd
+# import numpy as np
+# from pathlib import Path
+# import streamlit as st
+# import datetime
+
+# @st.cache_data(show_spinner=False)
+# def load_all_data():
+#     current_dir = Path.cwd()
+#     possible_dirs = [current_dir / "data", current_dir, Path(__file__).resolve().parents[1] / "data", Path(__file__).resolve().parents[1]]
+    
+#     def find_file(pattern, dirs):
+#         for d in dirs:
+#             if d.exists() and d.is_dir():
+#                 matches = list(d.glob(pattern))
+#                 if matches: return matches[0]
+#         return None
+
+#     # Locate files based on your provided naming conventions
+#     bops_file = find_file("*BOPS*.xlsx", possible_dirs) or find_file("*log*sheet*.xlsx", possible_dirs)
+#     csp_delay = find_file("*CSP DELAY*.xlsx", possible_dirs)
+#     elec_delay = find_file("*Electrical Delay*.xlsx", possible_dirs)
+#     chem_file = find_file("*Chemistry*.xlsx", possible_dirs)
+#     pm_file = find_file("*PM*.xlsx", possible_dirs)
+#     target_file = find_file("*MBP*.xlsx", possible_dirs) or find_file("*target*.xlsx", possible_dirs)
+#     rca_file = find_file("*RCA*.xlsx", possible_dirs)
+
+#     if not bops_file:
+#         st.error("❌ Could not find BOPS/Log Sheet file. Please ensure files are in the /data folder.")
+#         return {k: pd.DataFrame() for k in ["main", "delays", "targets", "pm", "chem", "rca"]}
+
+#     # --- 1. Load BOPS / Log Sheet (Production) ---
+#     df_bops = pd.DataFrame()
+#     try:
+#         xls = pd.ExcelFile(bops_file)
+#         sheets = [pd.read_excel(bops_file, sheet_name=s, skiprows=0) for s in xls.sheet_names]
+#         df_bops = pd.concat(sheets, ignore_index=True)
+        
+#         # Locate the Date column safely
+#         date_col = next((c for c in df_bops.columns if 'DATE' in str(c).upper()), None)
+#         if date_col:
+#             df_bops = df_bops.dropna(subset=[date_col])
+#             df_bops['Timestamp'] = pd.to_datetime(df_bops[date_col], errors='coerce')
+
+#         # EXACT MATCHING based on your uploaded images
+#         def get_col(keyword):
+#             for col in df_bops.columns:
+#                 if keyword.upper() in str(col).upper(): return col
+#             return None
+
+#         rename_map = {}
+#         if get_col('SHIFT'): rename_map[get_col('SHIFT')] = 'Shift'
+#         if get_col('HEAT NO'): rename_map[get_col('HEAT NO')] = 'Heat Number'
+#         if get_col('SEQUENCE'): rename_map[get_col('SEQUENCE')] = 'Sequence Number'
+#         if get_col('SPEED'): rename_map[get_col('SPEED')] = 'Casting Speed'
+#         if get_col('DISCHARGE'): rename_map[get_col('DISCHARGE')] = 'Production'
+#         if get_col('LIFTING TEMP'): rename_map[get_col('LIFTING TEMP')] = 'Lifting Temp'
+#         if get_col('AVG. TEMP'): rename_map[get_col('AVG. TEMP')] = 'Tundish Temp'
+#         if get_col('CASTING TIME'): rename_map[get_col('CASTING TIME')] = 'Casting Time'
+
+#         df_bops = df_bops.rename(columns=rename_map)
+        
+#         # Clean Shift Column (fixes "botha", spaces, NaN)
+#         if 'Shift' in df_bops.columns:
+#             df_bops['Shift'] = df_bops['Shift'].astype(str).str.strip().str.upper()
+#             df_bops['Shift'] = df_bops['Shift'].replace(['NAN', 'NONE', ''], np.nan)
+
+#         # Force Numeric Types safely
+#         for col in ['Casting Speed', 'Production', 'Tundish Temp', 'Lifting Temp', 'Casting Time']:
+#             if col in df_bops.columns:
+#                 df_bops[col] = pd.to_numeric(df_bops[col], errors='coerce').fillna(0)
+#             else:
+#                 df_bops[col] = 0.0
+
+#     except Exception as e:
+#         st.error(f"Error reading BOPS: {e}")
+
+#     # --- 2. Load Delays (CSP & Electrical) ---
+#     df_delays = pd.DataFrame()
+#     delay_list = []
+#     for f in [csp_delay, elec_delay]:
+#         if f:
+#             try:
+#                 xls = pd.ExcelFile(f)
+#                 for sheet in xls.sheet_names:
+#                     temp_df = pd.read_excel(f, sheet_name=sheet)
+#                     delay_col = next((c for c in temp_df.columns if 'DELAY' in str(c).upper() and 'MIN' in str(c).upper()), None)
+#                     date_col = next((c for c in temp_df.columns if 'DATE' in str(c).upper()), None)
+                    
+#                     if date_col and delay_col:
+#                         temp_df = temp_df.rename(columns={delay_col: 'Delay (mins)', date_col: 'Date'})
+#                         temp_df['Agency'] = temp_df.get('Agency', 'Unknown')
+#                         temp_df['Reason'] = temp_df.get('Reason', 'Unknown')
+#                         temp_df['Type'] = 'Electrical' if 'elect' in str(f).lower() else temp_df.get('Type', 'Mechanical/Process')
+#                         delay_list.append(temp_df[['Date', 'Delay (mins)', 'Agency', 'Reason', 'Type']])
+#             except Exception:
+#                 pass
+            
+#     if delay_list:
+#         df_delays = pd.concat(delay_list, ignore_index=True)
+#         df_delays['Date'] = pd.to_datetime(df_delays['Date'], errors='coerce')
+#         df_delays['Delay (mins)'] = pd.to_numeric(df_delays['Delay (mins)'], errors='coerce').fillna(0)
+#         df_delays = df_delays.drop_duplicates(subset=['Date', 'Delay (mins)', 'Reason', 'Agency'])
+
+#     # --- 3. Load Targets, Chemistry, PM, RCA ---
+#     df_targets = pd.read_excel(target_file) if target_file else pd.DataFrame(columns=['MONTH', 'TARGET', 'ACTUAL'])
+#     df_chem = pd.read_excel(chem_file) if chem_file else pd.DataFrame()
+#     df_pm = pd.read_excel(pm_file) if pm_file else pd.DataFrame()
+#     df_rca = pd.read_excel(rca_file) if rca_file else pd.DataFrame()
+
+#     return {
+#         "main": df_bops.sort_values('Timestamp').reset_index(drop=True) if not df_bops.empty else df_bops,
+#         "delays": df_delays,
+#         "targets": df_targets,
+#         "pm": df_pm,
+#         "chem": df_chem,
+#         "rca": df_rca
+#     }
+
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -533,10 +652,12 @@ def load_all_data():
     pm_file = find_file("*PM*.xlsx", possible_dirs)
     target_file = find_file("*MBP*.xlsx", possible_dirs) or find_file("*target*.xlsx", possible_dirs)
     rca_file = find_file("*RCA*.xlsx", possible_dirs)
+    # Added search for Grid Gap file
+    grid_file = find_file("*Grid*.xlsx", possible_dirs) or find_file("*Gap*.xlsx", possible_dirs)
 
     if not bops_file:
         st.error("❌ Could not find BOPS/Log Sheet file. Please ensure files are in the /data folder.")
-        return {k: pd.DataFrame() for k in ["main", "delays", "targets", "pm", "chem", "rca"]}
+        return {k: pd.DataFrame() for k in ["main", "delays", "targets", "pm", "chem", "rca", "grid"]}
 
     # --- 1. Load BOPS / Log Sheet (Production) ---
     df_bops = pd.DataFrame()
@@ -611,11 +732,12 @@ def load_all_data():
         df_delays['Delay (mins)'] = pd.to_numeric(df_delays['Delay (mins)'], errors='coerce').fillna(0)
         df_delays = df_delays.drop_duplicates(subset=['Date', 'Delay (mins)', 'Reason', 'Agency'])
 
-    # --- 3. Load Targets, Chemistry, PM, RCA ---
+    # --- 3. Load Targets, Chemistry, PM, RCA, Grid ---
     df_targets = pd.read_excel(target_file) if target_file else pd.DataFrame(columns=['MONTH', 'TARGET', 'ACTUAL'])
     df_chem = pd.read_excel(chem_file) if chem_file else pd.DataFrame()
     df_pm = pd.read_excel(pm_file) if pm_file else pd.DataFrame()
     df_rca = pd.read_excel(rca_file) if rca_file else pd.DataFrame()
+    df_grid = pd.read_excel(grid_file) if grid_file else pd.DataFrame()
 
     return {
         "main": df_bops.sort_values('Timestamp').reset_index(drop=True) if not df_bops.empty else df_bops,
@@ -623,5 +745,6 @@ def load_all_data():
         "targets": df_targets,
         "pm": df_pm,
         "chem": df_chem,
-        "rca": df_rca
+        "rca": df_rca,
+        "grid": df_grid # Added grid key to return dictionary
     }
